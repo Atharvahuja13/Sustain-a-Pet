@@ -1,0 +1,8 @@
+[
+  { "id": "helmet", "name": "Bike helmet", "habit": "walk", "count": 7 },
+  { "id": "bottle_charm", "name": "Bottle charm", "habit": "bottle", "count": 7 },
+  { "id": "scarf", "name": "Veggie scarf", "habit": "meat_free", "count": 7 },
+  { "id": "shades", "name": "Solar shades", "habit": "lights", "count": 7 },
+  { "id": "badge", "name": "Water-drop badge", "habit": "shower", "count": 7 },
+  { "id": "scholar_hat", "name": "Scholar hat", "habit": "quiz", "count": 7 }
+]

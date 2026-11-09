@@ -1,0 +1,5 @@
+[
+  { "id": "q1", "q": "Which gas is the main driver of human-caused climate change?", "options": ["Carbon dioxide", "Oxygen", "Nitrogen"], "answer": 0, "explain": "Burning coal, oil and gas releases carbon dioxide, which traps heat in the atmosphere." },
+  { "id": "q2", "q": "Which usually makes the least pollution per person on a 10 km trip?", "options": ["A car with one person", "A full bus", "A bicycle"], "answer": 2, "explain": "Cycling uses no fuel, and a full bus shares its emissions across many riders." },
+  { "id": "q3", "q": "What happens to most food waste in a landfill?", "options": ["It vanishes", "It rots and releases methane", "It turns into soil"], "answer": 1, "explain": "Rotting food gives off methane, a strong greenhouse gas." }
+]

@@ -1,0 +1,10 @@
+[
+  { "id": "walk", "label": "Walked, cycled or took public transport", "xp": 15, "why": "Travel is often one of the biggest parts of a person's carbon footprint." },
+  { "id": "meat_free", "label": "Ate a meat-free meal", "xp": 10, "why": "Plant-based meals usually need less land, water and energy than meat." },
+  { "id": "bottle", "label": "Used a reusable bottle, bag or container", "xp": 5, "why": "Reusing cuts the waste and energy of making single-use items." },
+  { "id": "lights", "label": "Switched off lights, fans or AC I was not using", "xp": 5, "why": "Saving electricity cuts emissions where power comes from fossil fuels." },
+  { "id": "shower", "label": "Took a short shower", "xp": 5, "why": "Heating water takes energy, so less time means less energy." },
+  { "id": "sort", "label": "Sorted my rubbish for recycling", "xp": 5, "why": "Recycling usually uses less energy than making things from raw materials." },
+  { "id": "plate", "label": "Finished my meal with no food waste", "xp": 5, "why": "Wasted food wastes the energy and water used to make it." },
+  { "id": "quiz", "label": "Answered today's quiz correctly", "xp": 10, "why": "The quiz explanation is the lesson." }
+]
