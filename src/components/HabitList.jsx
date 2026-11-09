@@ -7,7 +7,7 @@ export default function HabitList({ done, onTick }) {
     <section className="card" aria-labelledby="habits-h">
       <h2 id="habits-h">Today's habits</h2>
       <ul className="habits">
-        {habits.map((h) => {
+        {habits.map((h, idx) => {
           const isDone = done.includes(h.id)
           const isQuiz = h.id === 'quiz'
           return (
@@ -21,6 +21,7 @@ export default function HabitList({ done, onTick }) {
                 />
                 <span className="box" aria-hidden="true" />
                 <span className="txt">{h.label}</span>
+                {!isQuiz && <kbd className="key" aria-hidden="true">{idx + 1}</kbd>}
                 <span className="xp-tag">+{h.xp}</span>
               </label>
               {isDone && <p className="why">{h.why}</p>}

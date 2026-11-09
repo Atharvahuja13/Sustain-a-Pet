@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { activeOf, todayOf, useApp } from './store.js'
 import { habitsDone, moodFor, stageIndex } from './engine.js'
+import habitList from './data/habits.json'
+import { questionFor } from './components/QuizCard.jsx'
 import HealthBar from './components/HealthBar.jsx'
 import XpBar from './components/XpBar.jsx'
 import HabitList from './components/HabitList.jsx'
@@ -54,6 +56,29 @@ export default function App() {
     }
   }, [app.nonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keyboard: 1-7 tick habits, A/B/C answer the quiz, P pats the pet, Shift+D toggles demo, Esc closes the cutscene.
+  const kb = useRef()
+  kb.current = { pet, today, app }
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.closest?.('input:not([type=checkbox]), textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return
+      const { pet: p, today: t, app: a } = kb.current
+      if (e.key === 'Escape') { setEvolve(null); return }
+      if (!p) return
+      if (e.key === 'D' && e.shiftKey) { dispatch({ type: a.inDemo ? 'exitDemo' : 'enterDemo' }); return }
+      if (e.key === 'p' || e.key === 'P') { bump('bounce'); return }
+      const n = Number(e.key)
+      if (n >= 1 && n <= 7) { dispatch({ type: 'tick', id: habitList[n - 1].id }); return }
+      const q = 'abc'.indexOf(e.key.toLowerCase())
+      if (q >= 0 && e.key.length === 1) {
+        const ques = questionFor(t)
+        if (q < ques.options.length) dispatch({ type: 'quiz', choice: q, correct: ques.answer })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dispatch, bump])
+
   const petTap = () => {
     const now = Date.now()
     taps.current = [...taps.current.filter((t) => now - t < 2500), now]
@@ -70,12 +95,16 @@ export default function App() {
 
   return (
     <main className="home">
-      <header>
+      <header className="glass top">
         <div>
+          <p className="eyebrow">Sustain-a-Pet</p>
           <h1>{pet.pet.name}</h1>
-          <p className="muted">{['Seed', 'Sprout', 'Sapling', 'Guardian'][stage]} · feels {mood.toLowerCase()}</p>
         </div>
-        {app.inDemo && <span className="chip">Demo</span>}
+        <div className="pills">
+          {app.inDemo && <span className="pill demo">Demo</span>}
+          <span className="pill">{['Seed', 'Sprout', 'Sapling', 'Guardian'][stage]}</span>
+          <span className={`pill mood-${mood.toLowerCase()}`}>{mood}</span>
+        </div>
       </header>
 
       {app.awayDays >= 2 && !app.inDemo && (
@@ -88,7 +117,9 @@ export default function App() {
         <div className="banner" role="status">Welcome back! {pet.pet.name} missed you.<button onClick={() => dispatch({ type: 'dismissAway' })} aria-label="Dismiss">×</button></div>
       )}
 
-      <div className={`pet-stage mood-${mood.toLowerCase()}`} onClick={petTap}>
+      <div className={`pet-stage mood-${mood.toLowerCase()}`} onClick={petTap} role="button" tabIndex={0}
+        aria-label={`Pat ${pet.pet.name}. Press Enter or P.`}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); petTap() } }}>
         <Suspense fallback={<div className="loading">Waking up {pet.pet.name}…</div>}>
           <PetCanvas fit={{ dist: [5, 5.6, 6.4, 7.4][stage], y: [1.2, 1.4, 1.6, 1.8][stage], look: [0.9, 1.05, 1.2, 1.4][stage] }} camera={{ position: [0, 1.4, 6.2], fov: 34 }}>
             <PetModel sprite={pet.pet.sprite} stage={stage} mood={mood} fx={fx} reduced={reduced} />
@@ -98,11 +129,11 @@ export default function App() {
       </div>
       <div className="sr-only" aria-live="polite">{live}</div>
 
-      <HealthBar health={pet.health} />
-      <XpBar xp={pet.xp} />
+      <div className="glass stats"><HealthBar health={pet.health} /><XpBar xp={pet.xp} /></div>
       <HabitList done={done} onTick={(id) => dispatch({ type: 'tick', id })} />
       <QuizCard today={today} result={pet.days[today]?.quiz} onAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })} />
 
+      <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz · P pat · Shift+D demo</p>
       {app.inDemo && (
         <DemoDrawer date={today} offset={app.offset} onSkip={(days) => dispatch({ type: 'skipDay', days })}
           onXp={(amount) => dispatch({ type: 'addXp', amount })} onReset={() => dispatch({ type: 'resetDemo' })} onExit={() => dispatch({ type: 'exitDemo' })} />

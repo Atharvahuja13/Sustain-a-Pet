@@ -12,7 +12,7 @@ export default function QuizCard({ today, result, onAnswer }) {
       <p className="q">{q.q}</p>
       <div className="opts" role="group" aria-label="Answers">
         {q.options.map((o, i) => (
-          <button key={o} type="button" disabled={!!result} className={result && i === q.answer ? 'right' : ''} onClick={() => onAnswer(i, q.answer)}>{o}</button>
+          <button key={o} type="button" disabled={!!result} className={result && i === q.answer ? 'right' : ''} onClick={() => onAnswer(i, q.answer)}><kbd className="key" aria-hidden="true">{'ABC'[i]}</kbd>{o}</button>
         ))}
       </div>
       {result && (
