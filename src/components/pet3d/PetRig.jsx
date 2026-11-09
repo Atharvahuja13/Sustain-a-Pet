@@ -18,7 +18,7 @@ const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2)
  * Shared motion for every sprite: breathing, idle sway, look-at-pointer, tick bounce (spring + squash),
  * stage-up spin with a pop, a happy dance, and mood slump. `ctl` hands live values to the sprite parts.
  */
-export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0, 0], scale = 1, children }) {
+export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0, 0], scale = 1, motion, children }) {
   const body = useRef(), halo = useRef()
   const ctl = useRef({ droop: 0, grey: 0, stage: 0 })
   const s = useRef({ y: 0, vy: 0, sc: STAGE_SCALE[stage] * 0.8, evolve: -1, dance: -1 })
@@ -56,6 +56,12 @@ export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0
       if (st.dance > 2.8) st.dance = -1
     }
 
+    // walking: quick hop-bob with a side-to-side waddle, scaled by how fast the pet is moving
+    const walk = reduced || !motion ? 0 : Math.min(1, motion.current.speed / 1.1)
+    if (walk > 0.02) {
+      hop += Math.abs(Math.sin(t * 11)) * 0.13 * walk
+      rotZ += Math.sin(t * 11) * 0.07 * walk
+    }
     const breathe = reduced ? 0 : Math.sin(t * 1.7) * 0.022
     const target = STAGE_SCALE[stage] * 0.8 * scale
     st.sc = damp(st.sc, target, 5, dt)

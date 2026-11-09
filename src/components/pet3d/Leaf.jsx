@@ -1,10 +1,15 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { damp } from './shared.js'
+import * as THREE from 'three'
+import { damp, makeVeinGeometry } from './shared.js'
 
-/** A leaf that grows in when `show` turns true and shrinks away when false. Pivot is the leaf base. */
-export default function Leaf({ geometry, material, show = true, scale = 1, position = [0, 0, 0], rotation = [0, 0, 0], droop = null, ctl }) {
+let veinGeo
+const veinMat = new THREE.MeshStandardMaterial({ color: '#b6f09a', roughness: 0.5 })
+
+/** A leaf with veins that grows in when `show` turns true. Pivot is the leaf base. */
+export default function Leaf({ geometry, material, show = true, scale = 1, position = [0, 0, 0], rotation = [0, 0, 0], droop = null, ctl, veins = true }) {
   const g = useRef(), pivot = useRef(), cur = useRef(0)
+  const vg = useMemo(() => (veinGeo ??= makeVeinGeometry()), [])
   useFrame((_, dt) => {
     cur.current = damp(cur.current, show ? 1 : 0, 6, dt)
     g.current.scale.setScalar(Math.max(0.0001, cur.current) * scale)
@@ -17,7 +22,10 @@ export default function Leaf({ geometry, material, show = true, scale = 1, posit
   })
   return (
     <group ref={pivot} position={position} rotation={rotation}>
-      <mesh ref={g} geometry={geometry} material={material} castShadow />
+      <group ref={g}>
+        <mesh geometry={geometry} material={material} castShadow />
+        {veins && <mesh geometry={vg} material={veinMat} />}
+      </group>
     </group>
   )
 }

@@ -3,9 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import Face from './Face.jsx'
 import Leaf from './Leaf.jsx'
-import { damp, makeLeafGeometry } from './shared.js'
+import { damp, makeLeafGeometry, gummy } from './shared.js'
 
-const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.5, ...extra })
+const std = (color, extra = {}) => gummy(color, extra)
 const PETALS = [8, 10, 12, 14]
 const HEAD_Y = 1.3
 

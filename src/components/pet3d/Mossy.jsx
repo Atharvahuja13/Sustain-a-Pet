@@ -2,9 +2,9 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import Face from './Face.jsx'
-import { damp } from './shared.js'
+import { damp, gummy } from './shared.js'
 
-const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...extra })
+const std = (color, extra = {}) => gummy(color, extra)
 
 // Moss bumps scattered over the top of the body (deterministic so renders never jump).
 const BUMPS = Array.from({ length: 18 }, (_, i) => {

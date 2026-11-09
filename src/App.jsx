@@ -1,10 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import * as THREE from 'three'
 import { activeOf, todayOf, useApp } from './store.js'
 import { habitsDone, moodFor, stageIndex } from './engine.js'
 import habitList from './data/habits.json'
 import { questionFor } from './components/QuizCard.jsx'
-import HealthBar from './components/HealthBar.jsx'
-import XpBar from './components/XpBar.jsx'
+import Vitals from './components/Vitals.jsx'
+import Icon from './components/Icons.jsx'
 import HabitList from './components/HabitList.jsx'
 import QuizCard from './components/QuizCard.jsx'
 import DemoDrawer from './components/DemoDrawer.jsx'
@@ -14,6 +15,7 @@ import { usePrefersReducedMotion } from './components/pet3d/shared.js'
 
 const PetCanvas = lazy(() => import('./components/pet3d/PetCanvas.jsx'))
 const PetModel = lazy(() => import('./components/pet3d/PetModel.jsx'))
+const World = lazy(() => import('./components/pet3d/World.jsx'))
 
 let uid = 0
 
@@ -29,6 +31,10 @@ export default function App() {
   const [evolve, setEvolve] = useState(null)
   const [live, setLive] = useState('')
   const taps = useRef([])
+  const camApi = useRef({})
+  const petCtl = useRef({ pos: new THREE.Vector3(0, 0, 0.4) })
+  const [hintGone, setHintGone] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setHintGone(true), 9000); return () => clearTimeout(t) }, [])
 
   const bump = useCallback((...keys) => setFx((f) => { const n = { ...f }; keys.forEach((k) => (n[k] += 1)); return n }), [])
   const pushToast = useCallback((text) => {
@@ -56,6 +62,7 @@ export default function App() {
     }
   }, [app.nonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const petTapRef = useRef(() => {})
   // Keyboard: 1-7 tick habits, A/B/C answer the quiz, P pats the pet, Shift+D toggles demo, Esc closes the cutscene.
   const kb = useRef()
   kb.current = { pet, today, app }
@@ -66,7 +73,12 @@ export default function App() {
       if (e.key === 'Escape') { setEvolve(null); return }
       if (!p) return
       if (e.key === 'D' && e.shiftKey) { dispatch({ type: a.inDemo ? 'exitDemo' : 'enterDemo' }); return }
-      if (e.key === 'p' || e.key === 'P') { bump('bounce'); return }
+      if (e.key === 'p' || e.key === 'P') { petTapRef.current(); return }
+      if (e.key === '+' || e.key === '=') { camApi.current.zoom?.(0.8); return }
+      if (e.key === '-' || e.key === '_') { camApi.current.zoom?.(1.25); return }
+      if (e.key === 'ArrowLeft') { camApi.current.rotate?.(-0.5); e.preventDefault(); return }
+      if (e.key === 'ArrowRight') { camApi.current.rotate?.(0.5); e.preventDefault(); return }
+      if (e.key === '0') { camApi.current.reset?.(); return }
       const n = Number(e.key)
       if (n >= 1 && n <= 7) { dispatch({ type: 'tick', id: habitList[n - 1].id }); return }
       const q = 'abc'.indexOf(e.key.toLowerCase())
@@ -82,9 +94,12 @@ export default function App() {
   const petTap = () => {
     const now = Date.now()
     taps.current = [...taps.current.filter((t) => now - t < 2500), now]
-    bump('bounce')
+    bump('bounce', 'leaves')
+    petCtl.current.hold?.(2.2)
     if (taps.current.length >= 5 && !app.inDemo) { taps.current = []; dispatch({ type: 'enterDemo' }) }
   }
+
+  petTapRef.current = petTap
 
   if (!app.real && !app.inDemo) return <Onboarding reduced={reduced} onHatch={(name, sprite) => dispatch({ type: 'hatch', name, sprite })} />
   if (!pet) return null
@@ -92,18 +107,21 @@ export default function App() {
   const mood = moodFor(pet.health)
   const stage = stageIndex(pet.xp)
   const done = habitsDone(pet, today)
+  const garden = Math.min(15, 3 + Object.values(pet.counts).reduce((a, b) => a + b, 0))
 
   return (
     <main className="home">
       <header className="glass top">
-        <div>
-          <p className="eyebrow">Sustain-a-Pet</p>
-          <h1>{pet.pet.name}</h1>
+        <div className="top-l">
+          <p className="eyebrow"><Icon name="leaf" size={16} />Sustain-a-Pet</p>
+          <div className="name-row">
+            <h1>{pet.pet.name}</h1>
+            {app.inDemo && <span className="pill demo">Demo</span>}
+          </div>
         </div>
-        <div className="pills">
-          {app.inDemo && <span className="pill demo">Demo</span>}
-          <span className="pill">{['Seed', 'Sprout', 'Sapling', 'Guardian'][stage]}</span>
-          <span className={`pill mood-${mood.toLowerCase()}`}>{mood}</span>
+        <div className="top-r">
+          <span className="stage-label"><Icon name="drop" size={20} />{['Seed', 'Sprout', 'Sapling', 'Guardian'][stage]}</span>
+          <span className={`pill mood mood-${mood.toLowerCase()}`}><Icon name="sprout" size={18} />{mood}</span>
         </div>
       </header>
 
@@ -117,23 +135,28 @@ export default function App() {
         <div className="banner" role="status">Welcome back! {pet.pet.name} missed you.<button onClick={() => dispatch({ type: 'dismissAway' })} aria-label="Dismiss">×</button></div>
       )}
 
-      <div className={`pet-stage mood-${mood.toLowerCase()}`} onClick={petTap} role="button" tabIndex={0}
-        aria-label={`Pat ${pet.pet.name}. Press Enter or P.`}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); petTap() } }}>
+      <section className={`pet-stage mood-${mood.toLowerCase()}`} aria-label={`${pet.pet.name}'s world. Drag to look around, scroll to zoom, tap the ground to make ${pet.pet.name} walk.`}>
         <Suspense fallback={<div className="loading">Waking up {pet.pet.name}…</div>}>
-          <PetCanvas fit={{ dist: [5, 5.6, 6.4, 7.4][stage], y: [1.2, 1.4, 1.6, 1.8][stage], look: [0.9, 1.05, 1.2, 1.4][stage] }} camera={{ position: [0, 1.4, 6.2], fov: 34 }}>
-            <PetModel sprite={pet.pet.sprite} stage={stage} mood={mood} fx={fx} reduced={reduced} />
+          <PetCanvas orbit api={camApi} follow={{ get current() { return petCtl.current.pos } }} stage={stage} camera={{ position: [0, 1.9, 5.4], fov: 36 }} target={[0, 0.7, 0]}>
+            <World ctl={petCtl} garden={garden} reduced={reduced} onFlower={() => bump('leaves')} onShroom={() => bump('bounce')} />
+            <PetModel sprite={pet.pet.sprite} stage={stage} mood={mood} fx={fx} reduced={reduced} ctl={petCtl} onPat={petTap} />
           </PetCanvas>
         </Suspense>
+        <div className="zoom" role="group" aria-label="Camera">
+          <button onClick={() => camApi.current.zoom?.(0.78)} aria-label="Zoom in" title="Zoom in (+)"><Icon name="plus" size={20} /></button>
+          <button onClick={() => camApi.current.zoom?.(1.28)} aria-label="Zoom out" title="Zoom out (-)"><Icon name="minus" size={20} /></button>
+          <button onClick={() => camApi.current.reset?.()} aria-label="Reset view" title="Reset view (0)"><Icon name="target" size={20} /></button>
+        </div>
+        {!hintGone && <p className="scene-hint" aria-hidden="true">Drag to look · scroll to zoom · tap the ground</p>}
         <Rewards floats={floats} toasts={toasts} evolve={evolve} onCloseEvolve={() => setEvolve(null)} petName={pet.pet.name} />
-      </div>
+      </section>
       <div className="sr-only" aria-live="polite">{live}</div>
 
-      <div className="glass stats"><HealthBar health={pet.health} /><XpBar xp={pet.xp} /></div>
+      <Vitals health={pet.health} xp={pet.xp} doneToday={done.length} totalHabits={habitList.length} />
       <HabitList done={done} onTick={(id) => dispatch({ type: 'tick', id })} />
       <QuizCard today={today} result={pet.days[today]?.quiz} onAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })} />
 
-      <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz · P pat · Shift+D demo</p>
+      <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz · P pat · +/− zoom · ←/→ look · 0 reset · Shift+D demo</p>
       {app.inDemo && (
         <DemoDrawer date={today} offset={app.offset} onSkip={(days) => dispatch({ type: 'skipDay', days })}
           onXp={(amount) => dispatch({ type: 'addXp', amount })} onReset={() => dispatch({ type: 'resetDemo' })} onExit={() => dispatch({ type: 'exitDemo' })} />
