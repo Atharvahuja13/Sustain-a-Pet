@@ -5,6 +5,11 @@ import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <div className="device">
+      <div className="notch" aria-hidden="true" />
+      <div className="screen">
+        <App />
+      </div>
+    </div>
   </StrictMode>,
 )

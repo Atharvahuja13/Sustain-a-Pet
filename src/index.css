@@ -103,3 +103,22 @@ button { font: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Laptop/desktop: show the app inside a phone so it reads as a phone app. */
+@media (min-width: 700px) and (min-height: 520px) {
+  body { background: radial-gradient(90% 70% at 50% 0%, #2c5a40 0%, #14281d 70%) fixed; overflow: hidden; }
+  #root { min-height: 100vh; display: grid; place-items: center; }
+  .device {
+    position: relative; width: 390px; height: min(844px, calc(100vh - 32px)); border-radius: 54px; padding: 11px;
+    background: #0d1511; box-shadow: 0 0 0 2px #3b4a41, 0 30px 80px #000a, inset 0 0 0 2px #1d2a22;
+  }
+  .screen {
+    position: relative; height: 100%; overflow-y: auto; overflow-x: hidden; border-radius: 44px; background: var(--bg);
+    transform: translateZ(0); /* makes position:fixed overlays (drawer, evolve cutscene) fill the phone, not the window */
+    scrollbar-width: none; padding-top: 28px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .notch { position: absolute; z-index: 60; top: 20px; left: 50%; width: 104px; height: 28px; margin-left: -52px; border-radius: 99px; background: #0d1511; }
+  .home, .onboard { max-width: none; }
+  .evolve { position: fixed; }
+}
