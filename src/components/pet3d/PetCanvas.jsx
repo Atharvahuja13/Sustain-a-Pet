@@ -4,7 +4,7 @@ import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-
 import * as THREE from 'three'
 
 const { damp } = THREE.MathUtils
-const DEFAULT_DIST = (stage) => 4.9 + stage * 0.9
+const DEFAULT_DIST = (stage) => 10.2 + stage * 0.35
 
 /**
  * Orbit camera that follows the pet. Drag to look around, wheel/pinch to zoom.
@@ -24,7 +24,11 @@ function CameraRig({ api, follow, stage }) {
   }, [api])
   useEffect(() => { stageRef.current = stage; imp.current.fit = 1.4 }, [stage])
 
-  useFrame(({ camera }, dt) => {
+  useFrame(({ camera, size }, dt) => {
+    // Keep a generous horizontal view on phones without wasting vertical space on wide displays.
+    const fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(27 * Math.PI / 180) / (size.width / size.height)))
+    const fittedFov = THREE.MathUtils.clamp(fov, 36, 80)
+    if (Math.abs(camera.fov - fittedFov) > 0.1) { camera.fov = fittedFov; camera.updateProjectionMatrix() }
     const c = controls.current
     if (!c) return
     dt = Math.min(dt, 0.05)
@@ -53,7 +57,7 @@ function CameraRig({ api, follow, stage }) {
   })
   return (
     <OrbitControls ref={controls} makeDefault enablePan={false} enableDamping dampingFactor={0.09}
-      minDistance={2.8} maxDistance={12} minPolarAngle={0.55} maxPolarAngle={1.5} rotateSpeed={0.65} zoomSpeed={0.7} />
+      minDistance={5.5} maxDistance={14} minPolarAngle={0.55} maxPolarAngle={1.5} rotateSpeed={0.65} zoomSpeed={0.7} />
   )
 }
 

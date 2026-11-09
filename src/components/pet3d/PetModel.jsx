@@ -17,33 +17,33 @@ const SPEED = { Thriving: 1.1, Okay: 0.8, Wilting: 0.45, Sick: 0 }
  */
 function Wanderer({ ctl, mood, reduced, motion, children }) {
   const g = useRef()
-  const st = useRef({ x: 0, z: 0.4, heading: 0, goal: null, idle: 2.5, speed: 0, hold: 0 })
+  const st = useRef({ x: 0, z: 0.4, heading: 0, goal: null, idle: 2.5, speed: 0, hold: 0, parked: false, manual: false })
   const { camera } = useThree()
 
   useEffect(() => {
     const c = ctl.current
-    c.goTo = (x, z) => { if (SPEED[mood] > 0) { st.current.goal = { x, z }; st.current.hold = 0 } }
-    c.hold = (s) => { st.current.goal = null; st.current.hold = s }
+    c.goTo = (x, z) => { st.current.goal = { x, z }; st.current.hold = 0; st.current.parked = false; st.current.manual = true }
+    c.hold = (s) => { st.current.goal = null; st.current.hold = s; st.current.parked = true; st.current.manual = false }
   }, [ctl, mood])
 
   useFrame((_, dt) => {
     dt = Math.min(dt, 0.05)
     const s = st.current, max = SPEED[mood]
     if (s.hold > 0) s.hold -= dt
-    if (!s.goal && s.hold <= 0 && max > 0 && !reduced) {
+    if (!s.goal && s.hold <= 0 && !s.parked && max > 0 && !reduced) {
       s.idle -= dt
       if (s.idle <= 0) {
         const a = Math.random() * 6.283, d = 1 + Math.random() * (ISLAND - 1.2)
-        s.goal = { x: Math.cos(a) * d, z: Math.sin(a) * d }
+        s.goal = { x: Math.cos(a) * d, z: Math.sin(a) * d }; s.manual = false
       }
     }
     let target = s.heading
     if (s.goal) {
       const dx = s.goal.x - s.x, dz = s.goal.z - s.z, dist = Math.hypot(dx, dz)
-      if (dist < 0.1) { s.goal = null; s.idle = 2 + Math.random() * 4; s.speed = 0 }
+      if (dist < 0.1) { const wasManual = s.manual; s.goal = null; s.idle = 2 + Math.random() * 4; s.speed = 0; s.parked = wasManual; s.manual = false }
       else {
         target = Math.atan2(dx, dz)
-        const want = max * Math.min(1, dist / 0.6 + 0.35)
+        const want = Math.max(max, s.manual ? 0.5 : 0) * Math.min(1, dist / 0.6 + 0.35)
         s.speed = damp(s.speed, want, 6, dt)
         s.x += (dx / dist) * s.speed * dt
         s.z += (dz / dist) * s.speed * dt
@@ -56,7 +56,12 @@ function Wanderer({ ctl, mood, reduced, motion, children }) {
     s.heading += diff * Math.min(1, dt * 6)
     g.current.position.set(s.x, 0, s.z)
     g.current.rotation.y = s.heading
+    const previousPhase = motion.current.phase
+    if (s.speed > 0.035) motion.current.phase += s.speed * dt * 10
+    const steps = Math.floor(motion.current.phase / Math.PI) - Math.floor(previousPhase / Math.PI)
+    if (steps > 0) ctl.current.stepCount = (ctl.current.stepCount ?? 0) + steps
     motion.current.speed = s.speed
+    ctl.current.speed = s.speed
     ctl.current.pos.set(s.x, 0, s.z)
   })
   return <group ref={g}>{children}</group>
@@ -66,7 +71,7 @@ const damp = THREE.MathUtils.damp
 /** One pet (no canvas): sprite model, shared motion rig and reward bursts. With `ctl` it roams the world. */
 export default function PetModel({ sprite = 'leafling', stage = 0, mood = 'Thriving', fx = {}, reduced = false, position, scale, ctl, onPat }) {
   const Body = BODIES[sprite] ?? Leafling
-  const motion = useRef({ speed: 0 })
+  const motion = useRef({ speed: 0, phase: 0 })
   const inner = (
     <>
       <group

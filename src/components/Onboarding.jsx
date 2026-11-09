@@ -24,10 +24,12 @@ export default function Onboarding({ reduced, onHatch }) {
 
   return (
     <main className="onboard">
-      <h1>Sustain-a-Pet</h1>
-      <p className="muted">Pick a friend. Your green habits keep it healthy.</p>
-      <p className="hint">Keys 1–3 pick a pet · Enter hatches</p>
-      <div className="stage-pick">
+      <span className="onboard-badge">A LITTLE FRIEND FOR A GREENER WORLD</span>
+      <h1>Grow greener, together.</h1>
+      <p className="onboard-lede">Choose your companion. Every earth-kind habit helps them thrive.</p>
+      <p className="onboard-keys">Choose with 1–3 · press Enter to hatch</p>
+      <p className="onboard-step">01 · Choose your companion</p>
+      <div className="stage-pick" aria-label="Preview your three companions">
         <Suspense fallback={<div className="loading">Loading…</div>}>
           <PetCanvas camera={{ position: [0, 1.6, 9.4], fov: 34 }} target={[0, 1.1, 0]}>
             {KEYS.map((k, i) => (
@@ -48,12 +50,13 @@ export default function Onboarding({ reduced, onHatch }) {
           </label>
         ))}
       </div>
+      <p className="onboard-step">02 · Give your friend a name</p>
       <form onSubmit={(e) => { e.preventDefault(); setTouched(true); if (!empty) onHatch(name, sprite) }}>
         <label htmlFor="pet-name">Name your pet</label>
         <input id="pet-name" value={name} maxLength={20} autoComplete="off" placeholder="Pip" aria-invalid={touched && empty}
           aria-describedby="name-help" onChange={(e) => setName(e.target.value)} />
         <p id="name-help" className={touched && empty ? 'err' : 'muted'}>{touched && empty ? 'Give your pet a name first.' : `${name.length} / 20`}</p>
-        <button className="primary" type="submit">Hatch</button>
+        <button className="primary" type="submit">Hatch {SPRITES[sprite].label}</button>
       </form>
     </main>
   )

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Icon from './Icons.jsx'
 
 export default function DemoDrawer({ date, offset, onSkip, onXp, onReset, onExit }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   return (
     <aside className="drawer" aria-label="Demo mode">
       <button className="drawer-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>

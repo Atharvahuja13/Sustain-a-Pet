@@ -77,8 +77,9 @@ export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0
     // walking: quick hop-bob with a side-to-side waddle, scaled by how fast the pet is moving
     const walk = reduced || !motion ? 0 : Math.min(1, motion.current.speed / 1.1) * (1 - pw.current.p)
     if (walk > 0.02) {
-      hop += Math.abs(Math.sin(t * 11)) * 0.13 * walk
-      rotZ += Math.sin(t * 11) * 0.07 * walk
+      const gait = motion.current.phase ?? 0
+      hop += Math.abs(Math.sin(gait)) * 0.13 * walk
+      rotZ += Math.sin(gait) * 0.07 * walk
     }
     const P = pw.current
     P.left = Math.max(0, P.left - dt)

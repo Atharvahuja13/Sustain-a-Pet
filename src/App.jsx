@@ -6,18 +6,38 @@ import habitList from './data/habits.json'
 import { questionFor } from './components/QuizCard.jsx'
 import Vitals from './components/Vitals.jsx'
 import Icon from './components/Icons.jsx'
-import HabitList from './components/HabitList.jsx'
-import QuizCard from './components/QuizCard.jsx'
 import DemoDrawer from './components/DemoDrawer.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Rewards, { unlockText } from './components/Rewards.jsx'
 import { usePrefersReducedMotion } from './components/pet3d/shared.js'
+import LeafFootsteps from './components/LeafFootsteps.jsx'
 
 const PetCanvas = lazy(() => import('./components/pet3d/PetCanvas.jsx'))
 const PetModel = lazy(() => import('./components/pet3d/PetModel.jsx'))
 const World = lazy(() => import('./components/pet3d/World.jsx'))
 
 let uid = 0
+const TUTORIAL_KEY = 'sustain-pet-tutorial-v1'
+const tutorialSteps = [
+  ['Choose a mushroom', 'Tap any mushroom. Your pet will wander over, then its daily quest appears.'],
+  ['Complete a real habit', 'Tick the quest to earn XP. Your pet stays by that mushroom while you play.'],
+  ['Find the golden quest', 'The glowing gold mushroom holds the daily quiz. You will hear a soft leaf rustle as your pet walks.'],
+]
+
+function QuickGuide({ onFinish }) {
+  const [step, setStep] = useState(0)
+  return <div className="tutorial-backdrop" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+    <section className="tutorial-card">
+      <span className="tutorial-kicker">A QUICK GARDEN GUIDE · {step + 1} OF {tutorialSteps.length}</span>
+      <h2 id="tutorial-title">{tutorialSteps[step][0]}</h2>
+      <p>{tutorialSteps[step][1]}</p>
+      <div className="tutorial-actions">
+        <button className="tutorial-skip" onClick={onFinish}>Skip guide</button>
+        <button className="primary" onClick={() => step === tutorialSteps.length - 1 ? onFinish() : setStep(step + 1)}>{step === tutorialSteps.length - 1 ? 'Start exploring' : 'Next'}</button>
+      </div>
+    </section>
+  </div>
+}
 
 export default function App() {
   const [app, dispatch] = useApp()
@@ -30,9 +50,15 @@ export default function App() {
   const [toasts, setToasts] = useState([])
   const [evolve, setEvolve] = useState(null)
   const [live, setLive] = useState('')
+  const [tutorial, setTutorial] = useState(() => localStorage.getItem(TUTORIAL_KEY) === 'in-progress' ? 'in-progress' : null)
   const taps = useRef([])
   const camApi = useRef({})
   const petCtl = useRef({ pos: new THREE.Vector3(0, 0, 0.4) })
+
+  useEffect(() => {
+    if (tutorial) localStorage.setItem(TUTORIAL_KEY, tutorial)
+  }, [tutorial])
+  const finishTutorial = () => { localStorage.setItem(TUTORIAL_KEY, 'done'); setTutorial(null) }
 
   const bump = useCallback((...keys) => setFx((f) => { const n = { ...f }; keys.forEach((k) => (n[k] += 1)); return n }), [])
   // Power-up: green glow, floating, orbiting motes. Longer for bigger rewards; never shorter than what is left.
@@ -103,7 +129,7 @@ export default function App() {
 
   petTapRef.current = petTap
 
-  if (!app.real && !app.inDemo) return <Onboarding reduced={reduced} onHatch={(name, sprite) => dispatch({ type: 'hatch', name, sprite })} />
+  if (!app.real && !app.inDemo) return <Onboarding reduced={reduced} onHatch={(name, sprite) => { dispatch({ type: 'hatch', name, sprite }); localStorage.setItem(TUTORIAL_KEY, 'in-progress'); setTutorial('in-progress') }} />
   if (!pet) return null
 
   const mood = moodFor(pet.health)
@@ -139,19 +165,24 @@ export default function App() {
 
       <section className={`pet-stage mood-${mood.toLowerCase()}`} aria-label={`${pet.pet.name}'s world`}>
         <Suspense fallback={<div className="loading">Waking up {pet.pet.name}…</div>}>
-          <PetCanvas orbit api={camApi} follow={{ get current() { return petCtl.current.pos } }} stage={stage} camera={{ position: [0, 1.9, 5.4], fov: 36 }} target={[0, 0.7, 0]}>
-            <World ctl={petCtl} garden={garden} reduced={reduced} onFlower={() => { bump('leaves'); powerUp(3.5) }} onShroom={() => bump('bounce')} />
+          <PetCanvas orbit api={camApi} follow={{ get current() { return petCtl.current.pos } }} stage={stage} camera={{ position: [0, 7.7, 8.4], fov: 48 }} target={[0, 0.7, 0]}>
+            <World ctl={petCtl} garden={garden} reduced={reduced} habits={habitList} done={done} today={today} quizResult={pet.days[today]?.quiz}
+              onHabit={(id) => dispatch({ type: 'tick', id })} onQuizAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })}
+              onFlower={() => { bump('leaves'); powerUp(3.5) }} onShroom={() => bump('bounce')} />
             <PetModel sprite={pet.pet.sprite} stage={stage} mood={mood} fx={fx} reduced={reduced} ctl={petCtl} onPat={petTap} />
           </PetCanvas>
         </Suspense>
+        <div className="world-guide" aria-live="polite">
+          <span className="world-guide-icon" aria-hidden="true">✧</span>
+          <span><strong>Garden quests <em>{done.length}/{habitList.length}</em></strong><small>{done.length === habitList.length ? 'Wonderful work. Your garden is thriving.' : 'Tap a mushroom, then complete its quest.'}</small></span>
+        </div>
+        <LeafFootsteps movement={petCtl} enabled />
+        {tutorial === 'in-progress' && <QuickGuide onFinish={finishTutorial} />}
         <Rewards floats={floats} toasts={toasts} evolve={evolve} onCloseEvolve={() => setEvolve(null)} petName={pet.pet.name} />
       </section>
       <div className="sr-only" aria-live="polite">{live}</div>
 
       <Vitals health={pet.health} xp={pet.xp} doneToday={done.length} totalHabits={habitList.length} />
-      <HabitList done={done} onTick={(id) => dispatch({ type: 'tick', id })} />
-      <QuizCard today={today} result={pet.days[today]?.quiz} onAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })} />
-
       <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz</p>
       {app.inDemo && (
         <DemoDrawer date={today} offset={app.offset} onSkip={(days) => dispatch({ type: 'skipDay', days })}

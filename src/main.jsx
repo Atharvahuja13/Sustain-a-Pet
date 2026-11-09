@@ -7,9 +7,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <div className="device">
       <div className="notch" aria-hidden="true" />
-      <div className="screen">
-        <App />
-      </div>
+      <div className="screen"><App /></div>
     </div>
   </StrictMode>,
 )

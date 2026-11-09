@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Sparkles } from '@react-three/drei'
+import { Html, Sparkles, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
+import QuizCard from '../QuizCard.jsx'
 import { canvasTexture, damp, gummy, makeLeafGeometry, radialTexture, rng } from './shared.js'
 
 export const ISLAND = 3.4 // pet wander radius
 
-const rand = rng(11)
 const tmp = new THREE.Object3D()
 const col = new THREE.Color()
 
@@ -34,38 +34,65 @@ function Ground({ onGo }) {
   )
 }
 
-/* ---------- grass: short lawn near the pet, taller toward the rim ---------- */
-function Grass({ reduced }) {
-  const ref = useRef()
-  const N = 2600
-  const blades = useMemo(() => {
+/* ---------- a dense, irregular carpet of autumn leaves ---------- */
+function AutumnLeaves() {
+  const atlas = useTexture('/textures/dry-leaves-atlas.png')
+  atlas.colorSpace = THREE.SRGBColorSpace
+  const refs = useRef([])
+  const batches = useMemo(() => {
     const r = rng(21)
-    return Array.from({ length: N }, () => {
-      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 7
-      const edge = THREE.MathUtils.smoothstep(d, 2.6, 6.5)
-      return { x: Math.cos(a) * d, z: Math.sin(a) * d, h: (0.07 + r() * 0.09) + edge * (0.2 + r() * 0.5), ph: r() * 6.28, ry: r() * 3.14, lean: (r() - 0.5) * 0.3, tone: r() }
+    const clusters = Array.from({ length: 28 }, () => {
+      const a = r() * Math.PI * 2, d = Math.pow(r(), 0.74) * 7
+      return { x: Math.cos(a) * d, z: Math.sin(a) * d, spread: 0.24 + r() * 0.48 }
     })
+    const out = Array.from({ length: 4 }, () => [])
+    for (let i = 0; i < 1700; i++) {
+      let x, z
+      if (i < 1300) {
+        // Broad coverage through the walkable center, with leaf litter extending to the edges.
+        const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 4.75
+        x = Math.cos(a) * d; z = Math.sin(a) * d
+      } else {
+        const cluster = clusters[Math.floor(r() * clusters.length)]
+        // Looser, irregular drifts gather around the outside of the main scatter.
+        x = cluster.x + ((r() + r() + r() + r()) - 2) * cluster.spread
+        z = cluster.z + ((r() + r() + r() + r()) - 2) * cluster.spread
+      }
+      const variant = Math.floor(r() * 4)
+      out[variant].push({ x, z, y: 0.025 + r() * 0.025,
+        sx: 0.28 + r() * 0.27, sz: 0.27 + r() * 0.27,
+        yaw: r() * Math.PI * 2, curl: (r() - 0.5) * 0.16, lean: (r() - 0.5) * 0.12 })
+    }
+    return out
   }, [])
-  const geo = useMemo(() => { const g = new THREE.ConeGeometry(0.022, 1, 3, 1); g.translate(0, 0.5, 0); return g }, [])
-  useEffect(() => {
-    blades.forEach((b, i) => ref.current.setColorAt(i, col.set('#4fae55').lerp(new THREE.Color('#b9ea7c'), b.tone)))
-    ref.current.instanceColor.needsUpdate = true
-  }, [blades])
-  useFrame((s) => {
-    const t = reduced ? 0 : s.clock.elapsedTime
-    blades.forEach((b, i) => {
-      tmp.position.set(b.x, 0, b.z)
-      tmp.rotation.set(Math.sin(t * 1.3 + b.ph) * 0.1, b.ry, b.lean + Math.cos(t * 1.1 + b.ph) * 0.1)
-      tmp.scale.set(1, b.h, 1)
+  const geometries = useMemo(() => Array.from({ length: 4 }, (_, variant) => {
+    const g = new THREE.PlaneGeometry(1, 1)
+    const uv = g.attributes.uv
+    for (let i = 0; i < uv.count; i++) {
+      const u = uv.getX(i), v = uv.getY(i)
+      uv.setXY(i, u * 0.5 + (variant % 2) * 0.5, v * 0.5 + (variant < 2 ? 0.5 : 0))
+    }
+    uv.needsUpdate = true
+    return g
+  }), [])
+  const attachRefs = useMemo(() => batches.map((leaves, variant) => (mesh) => {
+    refs.current[variant] = mesh
+    if (!mesh) return
+    leaves.forEach((b, i) => {
+      tmp.position.set(b.x, b.y, b.z)
+      tmp.rotation.set(-Math.PI / 2 + b.curl, b.yaw, b.lean, 'YXZ')
+      tmp.scale.set(b.sx, b.sz, 1)
       tmp.updateMatrix()
-      ref.current.setMatrixAt(i, tmp.matrix)
+      mesh.setMatrixAt(i, tmp.matrix)
     })
-    ref.current.instanceMatrix.needsUpdate = true
-  })
+    mesh.instanceMatrix.needsUpdate = true
+  }), [batches])
   return (
-    <instancedMesh ref={ref} args={[geo, undefined, N]} frustumCulled={false}>
-      <meshStandardMaterial roughness={0.7} />
-    </instancedMesh>
+    <group>
+      {batches.map((leaves, i) => <instancedMesh key={i} ref={attachRefs[i]} args={[geometries[i], undefined, leaves.length]} frustumCulled={false}>
+        <meshStandardMaterial map={atlas} transparent alphaTest={0.3} depthWrite={false} side={THREE.DoubleSide} roughness={1} />
+      </instancedMesh>)}
+    </group>
   )
 }
 
@@ -139,14 +166,24 @@ function Flower({ spot, show, onPick, reduced }) {
   )
 }
 
-/* ---------- mushrooms that boing ---------- */
-const SHROOMS = [{ x: -2.9, z: -1.5, s: 1.1 }, { x: 2.7, z: -2.4, s: 0.85 }, { x: -1.4, z: 3.2, s: 0.7 }]
-function Mushroom({ spot, onPick }) {
+/* ---------- habit mushrooms: each one holds a daily action ---------- */
+const SHROOMS = [
+  { x: -3.8, z: -2.0, s: 1.05 }, { x: 2.3, z: -3.5, s: 0.9 },
+  { x: 4.0, z: 1.5, s: 0.88 }, { x: 1.0, z: 3.4, s: 0.82 },
+  { x: -2.6, z: 2.6, s: 0.9 }, { x: -3.4, z: 0.2, s: 0.8 },
+  { x: -1.2, z: -1.4, s: 0.95 }, { x: 1.5, z: 0.7, s: 0.78 },
+]
+function Mushroom({ spot, habit, done, quizResult, today, petPos, reduced, selected, onComplete, onQuizAnswer, onPick }) {
   const g = useRef(), sp = useRef({ y: 0, v: 0 })
-  const cap = useMemo(() => gummy('#e8604c', { roughness: 0.35 }), [])
+  const [near, setNear] = useState(false)
+  const isQuiz = habit.id === 'quiz'
+  const cap = useMemo(() => gummy(isQuiz ? '#e8a92f' : done ? '#6bb76a' : '#e8604c', { roughness: 0.35, emissive: isQuiz ? '#8c4f08' : done ? '#184f23' : '#43120d', emissiveIntensity: isQuiz ? 0.48 : done ? 0.22 : 0.04 }), [done, isQuiz])
   const stem = useMemo(() => gummy('#f6ecd6', { roughness: 0.55 }), [])
   const dot = useMemo(() => gummy('#fff8ec', { roughness: 0.5 }), [])
   useFrame((_, dt) => {
+    const distance = Math.hypot(petPos.x - spot.x, petPos.z - spot.z)
+    const nextNear = near ? distance < 1.8 : distance < 1.3
+    if (nextNear !== near) setNear(nextNear)
     const s = sp.current
     s.v += (-90 * s.y - 5 * s.v) * dt
     s.y += s.v * dt
@@ -162,6 +199,24 @@ function Mushroom({ spot, onPick }) {
           <mesh key={i} material={dot} position={d}><sphereGeometry args={[0.045, 12, 10]} /></mesh>
         ))}
       </group>
+      {near && selected && <Html position={[0, 1.02, 0]} center zIndexRange={[20, 0]}>
+        <div className="mushroom-prompt" onPointerDown={(e) => e.stopPropagation()}>
+          {isQuiz ? (
+            <div className="mushroom-quiz-card"><span className="mushroom-kicker">GOLDEN QUEST · +{habit.xp} XP</span><QuizCard today={today} result={quizResult} onAnswer={onQuizAnswer} /></div>
+          ) : (
+            <label className={`mushroom-habit ${done ? 'is-done' : ''}`}>
+              <input type="checkbox" checked={done} disabled={done} onChange={onComplete} aria-label={`Complete: ${habit.label}`} />
+              <span className="mushroom-check" aria-hidden="true">{done ? '✓' : ''}</span>
+              <span className="mushroom-copy"><span className="mushroom-kicker">{done ? 'GREAT WORK' : 'DAILY QUEST'}</span><strong>{habit.label}</strong><small>{done ? 'Completed today' : `Tap to complete · +${habit.xp} XP`}</small></span>
+            </label>
+          )}
+        </div>
+      </Html>}
+      {isQuiz && <>
+        <mesh position={[0, 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}><torusGeometry args={[0.52, 0.025, 10, 48]} /><meshBasicMaterial color="#ffd76a" toneMapped={false} /></mesh>
+        <pointLight position={[0, 0.9, 0]} color="#ffd05a" intensity={1.8} distance={3.4} decay={2} />
+        {!reduced && <Sparkles count={9} scale={[1.5, 1.25, 1.5]} position={[0, 0.8, 0]} size={2.4} speed={0.45} color="#ffe49a" />}
+      </>}
     </group>
   )
 }
@@ -231,8 +286,9 @@ function Atmosphere({ reduced }) {
   )
 }
 
-/** The pet's world. Interactive: tap ground to send the pet there, tap flowers and mushrooms. */
-export default function World({ ctl, garden = 3, reduced, onFlower, onShroom }) {
+/** The pet's world. Tap the ground to walk; a habit card rises when the pet reaches its mushroom. */
+export default function World({ ctl, garden = 3, reduced, habits = [], done = [], today, quizResult, onHabit, onQuizAnswer, onFlower, onShroom }) {
+  const [selectedId, setSelectedId] = useState(null)
   const go = (x, z) => {
     const r = Math.hypot(x, z)
     const k = r > ISLAND ? ISLAND / r : 1
@@ -241,14 +297,20 @@ export default function World({ ctl, garden = 3, reduced, onFlower, onShroom }) 
   return (
     <>
       <Atmosphere reduced={reduced} />
-      <Ground onGo={go} />
-      <Grass reduced={reduced} />
+      <Ground onGo={(x, z) => { setSelectedId(null); go(x, z) }} />
+      <AutumnLeaves />
       <Ferns />
       <Rocks />
       {FLOWER_SPOTS.map((f, i) => (
-        <Flower key={i} spot={f} show={i < garden} reduced={reduced} onPick={(s) => { go(s.x * 0.82, s.z * 0.82); onFlower?.(s) }} />
+        <Flower key={i} spot={f} show={i < garden} reduced={reduced} onPick={(s) => { setSelectedId(null); go(s.x * 0.82, s.z * 0.82); onFlower?.(s) }} />
       ))}
-      {SHROOMS.map((m, i) => <Mushroom key={i} spot={m} onPick={(s) => { go(s.x * 0.8, s.z * 0.8); onShroom?.(s) }} />)}
+      {SHROOMS.map((m, i) => {
+        const habit = habits[i]
+        if (!habit) return null
+        return <Mushroom key={habit.id} spot={m} habit={habit} done={done.includes(habit.id)} quizResult={quizResult} today={today} reduced={reduced} petPos={ctl.current.pos} selected={selectedId === habit.id}
+          onComplete={() => onHabit?.(habit.id)} onQuizAnswer={onQuizAnswer}
+          onPick={(s) => { setSelectedId(habit.id); go(s.x * 0.8, s.z * 0.8); onShroom?.(s) }} />
+      })}
     </>
   )
 }
