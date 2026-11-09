@@ -4,8 +4,10 @@ import * as THREE from 'three'
 import { damp, MOODS } from './shared.js'
 
 const IRIS = new THREE.MeshPhysicalMaterial({ color: '#07100c', roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.03, metalness: 0.1 })
+IRIS.userData.noGlow = true
 const SHINE = new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false })
 const MOUTH = new THREE.MeshStandardMaterial({ color: '#17261d', roughness: 0.45 })
+MOUTH.userData.noGlow = true
 
 /**
  * Face in the parent's local space, facing +Z. Big glossy black eyes with two highlights.

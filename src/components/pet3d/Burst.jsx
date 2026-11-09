@@ -6,7 +6,7 @@ import { makeLeafGeometry } from './shared.js'
 const KINDS = {
   leaves: { n: 22, life: 1.5, speed: [2.2, 4.2], up: 3.2, size: 0.22, spin: 6, g: 5, colors: ['#4cc36b', '#7ddf74', '#2fa35a', '#a6e87a'] },
   confetti: { n: 48, life: 2.2, speed: [2.5, 6], up: 5.2, size: 0.12, spin: 10, g: 7, colors: ['#ff5d73', '#ffd23f', '#3ddc97', '#4cc9f0', '#b388ff', '#ff9f43'] },
-  sparkle: { n: 34, life: 1.8, speed: [1.2, 3.4], up: 2.4, size: 0.1, spin: 4, g: -0.4, colors: ['#fff6a8', '#ffe066', '#ffffff', '#ffd1fb'] },
+  sparkle: { n: 34, life: 1.8, speed: [1.2, 3.4], up: 2.4, size: 0.055, spin: 4, g: -0.4, colors: ['#fff6a8', '#ffe066', '#ffffff', '#ffd1fb'] },
 }
 
 /** One-shot particle burst. Fires whenever `burstKey` changes (not on mount). Skipped for reduced motion. */

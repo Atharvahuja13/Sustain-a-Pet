@@ -25,7 +25,7 @@ export default function App() {
   const pet = activeOf(app)
   const today = todayOf(app)
 
-  const [fx, setFx] = useState({ bounce: 0, evolve: 0, dance: 0, leaves: 0, confetti: 0, sparkle: 0 })
+  const [fx, setFx] = useState({ bounce: 0, evolve: 0, dance: 0, leaves: 0, confetti: 0, sparkle: 0, power: 0, powerSecs: 5 })
   const [floats, setFloats] = useState([])
   const [toasts, setToasts] = useState([])
   const [evolve, setEvolve] = useState(null)
@@ -33,10 +33,10 @@ export default function App() {
   const taps = useRef([])
   const camApi = useRef({})
   const petCtl = useRef({ pos: new THREE.Vector3(0, 0, 0.4) })
-  const [hintGone, setHintGone] = useState(false)
-  useEffect(() => { const t = setTimeout(() => setHintGone(true), 9000); return () => clearTimeout(t) }, [])
 
   const bump = useCallback((...keys) => setFx((f) => { const n = { ...f }; keys.forEach((k) => (n[k] += 1)); return n }), [])
+  // Power-up: green glow, floating, orbiting motes. Longer for bigger rewards; never shorter than what is left.
+  const powerUp = useCallback((secs) => setFx((f) => ({ ...f, power: f.power + 1, powerSecs: secs, sparkle: f.sparkle + 1 })), [])
   const pushToast = useCallback((text) => {
     const id = ++uid
     setToasts((t) => [...t, { id, text }])
@@ -50,14 +50,15 @@ export default function App() {
     for (const e of app.events) {
       if (e.type === 'tick') {
         bump('bounce', 'leaves')
+        powerUp(e.xp >= 15 ? 7 : 5)
         const id = ++uid
         setFloats((f) => [...f, { id, xp: e.xp, x: 40 + Math.random() * 20 }])
         setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 1400)
       }
-      if (e.type === 'quizCorrect') bump('bounce', 'confetti')
-      if (e.type === 'stageUp') { bump('evolve', 'sparkle'); setTimeout(() => setEvolve({ stage: e.stage }), 900) }
-      if (e.type === 'unlock') { bump('confetti'); pushToast(unlockText(e.id)) }
-      if (e.type === 'allDone') { bump('dance', 'confetti'); pushToast('All habits done today! 🌍') }
+      if (e.type === 'quizCorrect') { bump('bounce', 'confetti'); powerUp(8) }
+      if (e.type === 'stageUp') { bump('evolve'); powerUp(12); setTimeout(() => setEvolve({ stage: e.stage }), 900) }
+      if (e.type === 'unlock') { bump('confetti'); powerUp(10); pushToast(unlockText(e.id)) }
+      if (e.type === 'allDone') { bump('dance', 'confetti'); powerUp(14); pushToast('All habits done today! 🌍') }
       if (e.type === 'mood') setLive(`${name} feels ${e.mood.toLowerCase()}`)
     }
   }, [app.nonce]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -96,6 +97,7 @@ export default function App() {
     taps.current = [...taps.current.filter((t) => now - t < 2500), now]
     bump('bounce', 'leaves')
     petCtl.current.hold?.(2.2)
+    if (taps.current.length === 3) powerUp(6) // hidden: three quick pats charge the pet up
     if (taps.current.length >= 5 && !app.inDemo) { taps.current = []; dispatch({ type: 'enterDemo' }) }
   }
 
@@ -135,19 +137,13 @@ export default function App() {
         <div className="banner" role="status">Welcome back! {pet.pet.name} missed you.<button onClick={() => dispatch({ type: 'dismissAway' })} aria-label="Dismiss">×</button></div>
       )}
 
-      <section className={`pet-stage mood-${mood.toLowerCase()}`} aria-label={`${pet.pet.name}'s world. Drag to look around, scroll to zoom, tap the ground to make ${pet.pet.name} walk.`}>
+      <section className={`pet-stage mood-${mood.toLowerCase()}`} aria-label={`${pet.pet.name}'s world`}>
         <Suspense fallback={<div className="loading">Waking up {pet.pet.name}…</div>}>
           <PetCanvas orbit api={camApi} follow={{ get current() { return petCtl.current.pos } }} stage={stage} camera={{ position: [0, 1.9, 5.4], fov: 36 }} target={[0, 0.7, 0]}>
-            <World ctl={petCtl} garden={garden} reduced={reduced} onFlower={() => bump('leaves')} onShroom={() => bump('bounce')} />
+            <World ctl={petCtl} garden={garden} reduced={reduced} onFlower={() => { bump('leaves'); powerUp(3.5) }} onShroom={() => bump('bounce')} />
             <PetModel sprite={pet.pet.sprite} stage={stage} mood={mood} fx={fx} reduced={reduced} ctl={petCtl} onPat={petTap} />
           </PetCanvas>
         </Suspense>
-        <div className="zoom" role="group" aria-label="Camera">
-          <button onClick={() => camApi.current.zoom?.(0.78)} aria-label="Zoom in" title="Zoom in (+)"><Icon name="plus" size={20} /></button>
-          <button onClick={() => camApi.current.zoom?.(1.28)} aria-label="Zoom out" title="Zoom out (-)"><Icon name="minus" size={20} /></button>
-          <button onClick={() => camApi.current.reset?.()} aria-label="Reset view" title="Reset view (0)"><Icon name="target" size={20} /></button>
-        </div>
-        {!hintGone && <p className="scene-hint" aria-hidden="true">Drag to look · scroll to zoom · tap the ground</p>}
         <Rewards floats={floats} toasts={toasts} evolve={evolve} onCloseEvolve={() => setEvolve(null)} petName={pet.pet.name} />
       </section>
       <div className="sr-only" aria-live="polite">{live}</div>
@@ -156,7 +152,7 @@ export default function App() {
       <HabitList done={done} onTick={(id) => dispatch({ type: 'tick', id })} />
       <QuizCard today={today} result={pet.days[today]?.quiz} onAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })} />
 
-      <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz · P pat · +/− zoom · ←/→ look · 0 reset · Shift+D demo</p>
+      <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz</p>
       {app.inDemo && (
         <DemoDrawer date={today} offset={app.offset} onSkip={(days) => dispatch({ type: 'skipDay', days })}
           onXp={(amount) => dispatch({ type: 'addXp', amount })} onReset={() => dispatch({ type: 'resetDemo' })} onExit={() => dispatch({ type: 'exitDemo' })} />
