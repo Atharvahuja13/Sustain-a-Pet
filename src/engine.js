@@ -119,6 +119,7 @@ export function rollover(state, today) {
   return {
     ...state,
     health: Math.max(MIN_HEALTH, state.health - DECAY_PER_DAY * away),
+    pets: Object.fromEntries(Object.entries(state.pets ?? {}).map(([id, pet]) => [id, { ...pet, health: Math.max(MIN_HEALTH, pet.health - DECAY_PER_DAY * away) }])),
     lastOpenDate: today,
   }
 }

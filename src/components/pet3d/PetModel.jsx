@@ -29,6 +29,7 @@ function Wanderer({ ctl, mood, reduced, motion, children }) {
   useFrame((_, dt) => {
     dt = Math.min(dt, 0.05)
     const s = st.current, max = SPEED[mood]
+    if (reduced && !s.manual) { s.goal = null; s.speed = 0 }
     if (s.hold > 0) s.hold -= dt
     if (!s.goal && s.hold <= 0 && !s.parked && max > 0 && !reduced) {
       s.idle -= dt

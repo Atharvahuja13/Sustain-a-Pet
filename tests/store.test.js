@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { addDays, createState, dateKey } from '../src/engine.js'
 import { reduce } from '../src/store.js'
 
 const empty = { real: null, demo: null, offset: 0, inDemo: false, events: [], awayDays: 0, nonce: 0 }
@@ -39,6 +40,16 @@ describe('store reducer', () => {
     a = reduce(a, { type: 'resetDemo' })
     expect(a.demo.xp).toBe(0)
     expect(a.offset).toBe(0)
+  })
+  it('practice focus rolls over without a real save and never mutates real at a future practice date', () => {
+    const today = dateKey(new Date())
+    const demo = createState('Practice', addDays(today, -2))
+    const opened = reduce({ ...empty, inDemo: true, demo }, { type: 'open' })
+    expect(opened.demo.health).toBe(60)
+    expect(opened.real).toBeNull()
+    const a = reduce(hatched(), { type: 'enterDemo' })
+    const future = reduce(a, { type: 'skipDay', days: 5 })
+    expect(reduce(future, { type: 'open' }).real).toBe(a.real)
   })
   it('skipDay ignored outside demo', () => {
     const a = hatched()

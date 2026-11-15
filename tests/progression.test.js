@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, answerQuiz, createState, logHabit, migrateState, taskCount } from '../src/engine.js'
+import { addDays, answerQuiz, createState, logHabit, migrateState, rollover, taskCount } from '../src/engine.js'
 import { buyDecor, claimGift, claimQuest, placeDecor, restore, selectPet, visitArea } from '../src/progression.js'
 const D = '2026-11-15'
 const fresh = () => createState('Pip', D)
@@ -53,6 +53,16 @@ describe('garden progression', () => {
     expect(s.health).toBe(80)
     expect(logHabit(s, 'walk', addDays(D, 2))).toBe(s)
     expect(selectPet(s, 'leafling', addDays(D, 2)).xp).toBe(150)
+  })
+  it('decays inactive pets once across switches and preserves independent health', () => {
+    let s = { ...fresh(), coins: 100, health: 95 }
+    s = selectPet(s, 'mossy', D)
+    s = rollover(s, addDays(D, 2))
+    expect(s.health).toBe(60)
+    s = selectPet(s, 'leafling', addDays(D, 2))
+    expect(s.health).toBe(75)
+    s = rollover(s, addDays(D, 2))
+    expect(selectPet(s, 'mossy', addDays(D, 2)).health).toBe(60)
   })
   it('places only owned decor, moves it and puts it away', () => {
     let s = fresh()

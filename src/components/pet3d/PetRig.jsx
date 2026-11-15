@@ -47,12 +47,13 @@ export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0
   useChanged(fx.dance, () => { if (!reduced) s.current.dance = 0 })
 
   useFrame((state, dt) => {
-    dt = Math.min(dt, 0.05)
+    dt = Math.min(dt, 0.025)
     const st = s.current, t = state.clock.elapsedTime, m = MOODS[mood], c = ctl.current
     c.droop = damp(c.droop, m.droop, 4, dt)
     c.grey = damp(c.grey, m.grey, 3, dt)
     c.stage = stage
 
+    if (reduced) { st.y = 0; st.vy = 0; st.dance = -1; st.evolve = -1; pw.current.wave = -1; wave.current.visible = false }
     // jump spring
     st.vy += (-70 * st.y - 7.5 * st.vy) * dt
     st.y += st.vy * dt
@@ -86,7 +87,7 @@ export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0
     P.p = damp(P.p, P.left > 0 ? 1 : 0, P.left > 0 ? 4 : 2, dt)
     const pwr = P.p
     // floating: rise off the ground and bob; walking hops fade out while airborne
-    hop += pwr * (0.7 + (reduced ? 0 : Math.sin(t * 2.4) * 0.09))
+    hop += reduced ? 0 : pwr * (0.7 + Math.sin(t * 2.4) * 0.09)
     rotZ += reduced ? 0 : Math.sin(t * 1.7) * 0.05 * pwr
     const breathe = reduced ? 0 : Math.sin(t * 1.7) * 0.022
     const target = STAGE_SCALE[stage] * 0.8 * scale
@@ -118,7 +119,7 @@ export default function PetRig({ stage, mood, fx = {}, reduced, position = [0, 0
     ring.current.visible = pwr > 0.01
     ringMat.current.opacity = pwr * 0.5
     ring.current.scale.setScalar(st.sc * (1 + (reduced ? 0 : Math.sin(t * 3) * 0.08)))
-    ring.current.rotation.z = t * 0.8
+    ring.current.rotation.z = reduced ? 0 : t * 0.8
     orbs.current.forEach((o, i) => {
       if (!o) return
       o.visible = pwr > 0.02

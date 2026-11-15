@@ -89,8 +89,8 @@ export function reduce(app, action) {
   switch (action.type) {
     case 'open': {
       // On open/focus: apply decay for days away; remember how long for the welcome-back line.
-      if (!app.real) return app
       if (app.inDemo) return withPet(app, (s, t) => rollover(s, t))
+      if (!app.real) return app
       const today = realToday()
       const away = daysBetween(app.real.lastOpenDate, today)
       const real = rollover(app.real, today)

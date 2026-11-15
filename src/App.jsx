@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { activeOf, todayOf, useApp } from './store.js'
-import { habitsDone, moodFor, stageIndex } from './engine.js'
+import { habitsDone, moodFor, stageIndex, taskCount } from './engine.js'
 import habitList from './data/habits.json'
 import { questionFor } from './components/QuizCard.jsx'
 import Vitals from './components/Vitals.jsx'
@@ -10,6 +10,8 @@ import DemoDrawer from './components/DemoDrawer.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Rewards, { unlockText } from './components/Rewards.jsx'
 import { usePrefersReducedMotion } from './components/pet3d/shared.js'
+import GardenJournal from './components/GardenJournal.jsx'
+import { AREAS } from './progression.js'
 import LeafFootsteps from './components/LeafFootsteps.jsx'
 
 const PetCanvas = lazy(() => import('./components/pet3d/PetCanvas.jsx'))
@@ -17,6 +19,7 @@ const PetModel = lazy(() => import('./components/pet3d/PetModel.jsx'))
 const World = lazy(() => import('./components/pet3d/World.jsx'))
 
 let uid = 0
+const safeTutorial = (value) => { try { if (value) localStorage.setItem(TUTORIAL_KEY, value); else return localStorage.getItem(TUTORIAL_KEY) } catch { return null } }
 const TUTORIAL_KEY = 'sustain-pet-tutorial-v1'
 const tutorialSteps = [
   ['Choose a mushroom', 'Tap any mushroom. Your pet will wander over, then its daily quest appears.'],
@@ -50,22 +53,23 @@ export default function App() {
   const [toasts, setToasts] = useState([])
   const [evolve, setEvolve] = useState(null)
   const [live, setLive] = useState('')
-  const [tutorial, setTutorial] = useState(() => localStorage.getItem(TUTORIAL_KEY) === 'in-progress' ? 'in-progress' : null)
+  const [tutorial, setTutorial] = useState(() => safeTutorial() === 'in-progress' ? 'in-progress' : null)
+  const [journal, setJournal] = useState(false)
   const taps = useRef([])
   const camApi = useRef({})
   const petCtl = useRef({ pos: new THREE.Vector3(0, 0, 0.4) })
 
   useEffect(() => {
-    if (tutorial) localStorage.setItem(TUTORIAL_KEY, tutorial)
+    if (tutorial) safeTutorial(tutorial)
   }, [tutorial])
-  const finishTutorial = () => { localStorage.setItem(TUTORIAL_KEY, 'done'); setTutorial(null) }
+  const finishTutorial = () => { safeTutorial('done'); setTutorial(null) }
 
   const bump = useCallback((...keys) => setFx((f) => { const n = { ...f }; keys.forEach((k) => (n[k] += 1)); return n }), [])
   // Power-up: green glow, floating, orbiting motes. Longer for bigger rewards; never shorter than what is left.
   const powerUp = useCallback((secs) => setFx((f) => ({ ...f, power: f.power + 1, powerSecs: secs, sparkle: f.sparkle + 1 })), [])
   const pushToast = useCallback((text) => {
     const id = ++uid
-    setToasts((t) => [...t, { id, text }])
+    setToasts((t) => [...t.slice(-2), { id, text }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200)
   }, [])
 
@@ -98,6 +102,7 @@ export default function App() {
       if (e.target.closest?.('input:not([type=checkbox]), textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return
       const { pet: p, today: t, app: a } = kb.current
       if (e.key === 'Escape') { setEvolve(null); return }
+      if (document.querySelector('dialog[open]') || document.querySelector('.tutorial-backdrop') || document.querySelector('.evolve')) return
       if (!p) return
       if (e.key === 'D' && e.shiftKey) { dispatch({ type: a.inDemo ? 'exitDemo' : 'enterDemo' }); return }
       if (e.key === 'p' || e.key === 'P') { petTapRef.current(); return }
@@ -129,12 +134,13 @@ export default function App() {
 
   petTapRef.current = petTap
 
-  if (!app.real && !app.inDemo) return <Onboarding reduced={reduced} onHatch={(name, sprite) => { dispatch({ type: 'hatch', name, sprite }); localStorage.setItem(TUTORIAL_KEY, 'in-progress'); setTutorial('in-progress') }} />
+  if (!app.real && !app.inDemo) return <><Onboarding reduced={reduced} onHatch={(name, sprite) => { dispatch({ type: 'hatch', name, sprite }); safeTutorial('in-progress'); setTutorial('in-progress') }} /><button className="practice-start" onClick={() => dispatch({ type: 'enterDemo' })}>Try a separate practice garden</button></>
   if (!pet) return null
 
   const mood = moodFor(pet.health)
   const stage = stageIndex(pet.xp)
   const done = habitsDone(pet, today)
+  const tasks = taskCount(pet, today)
   const garden = Math.min(15, 3 + Object.values(pet.counts).reduce((a, b) => a + b, 0))
 
   return (
@@ -169,20 +175,22 @@ export default function App() {
             <World ctl={petCtl} garden={garden} reduced={reduced} habits={habitList} done={done} today={today} quizResult={pet.days[today]?.quiz}
               onHabit={(id) => dispatch({ type: 'tick', id })} onQuizAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })}
               onFlower={() => { bump('leaves'); powerUp(3.5) }} onShroom={() => bump('bounce')} />
-            <PetModel sprite={pet.pet.sprite} stage={stage} mood={mood} fx={fx} reduced={reduced} ctl={petCtl} onPat={petTap} />
+            <PetModel sprite={pet.pet.sprite} key={pet.activePet} stage={stage} mood={mood} fx={fx} reduced={reduced} ctl={petCtl} onPat={petTap} />
           </PetCanvas>
         </Suspense>
         <div className="world-guide" aria-live="polite">
           <span className="world-guide-icon" aria-hidden="true">✧</span>
-          <span><strong>Garden quests <em>{done.length}/{habitList.length}</em></strong><small>{done.length === habitList.length ? 'Wonderful work. Your garden is thriving.' : 'Tap a mushroom, then complete its quest.'}</small></span>
+          <span><strong>Garden quests <em>{tasks}/{habitList.length}</em></strong><small>{tasks === habitList.length ? 'Wonderful work. Your garden is thriving.' : 'Tap a mushroom, then complete its quest.'}</small></span>
         </div>
-        <LeafFootsteps movement={petCtl} enabled />
+        <LeafFootsteps movement={petCtl} enabled={!reduced} />
         {tutorial === 'in-progress' && <QuickGuide onFinish={finishTutorial} />}
         <Rewards floats={floats} toasts={toasts} evolve={evolve} onCloseEvolve={() => setEvolve(null)} petName={pet.pet.name} />
       </section>
       <div className="sr-only" aria-live="polite">{live}</div>
 
-      <Vitals health={pet.health} xp={pet.xp} doneToday={done.length} totalHabits={habitList.length} />
+      <Vitals health={pet.health} xp={pet.xp} doneToday={tasks} totalHabits={habitList.length} />
+      <nav className="garden-toolbar" aria-label="Garden actions"><button onClick={() => setJournal(true)}><strong>Open journal</strong><small>Today · Garden · Shop · Pets</small></button><span>{AREAS.find((a) => a.id === pet.area)?.name}<strong>✦ {pet.coins} leaves</strong></span><button onClick={() => dispatch({ type: app.inDemo ? 'exitDemo' : 'enterDemo' })}>{app.inDemo ? 'Leave practice' : 'Practice'}</button></nav>
+      {journal && <GardenJournal state={pet} today={today} dispatch={dispatch} onClose={() => setJournal(false)} />}
       <p className="hint kbd-hint">Keys: 1–7 habits · A/B/C quiz</p>
       {app.inDemo && (
         <DemoDrawer date={today} offset={app.offset} onSkip={(days) => dispatch({ type: 'skipDay', days })}

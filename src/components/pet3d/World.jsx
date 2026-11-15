@@ -138,14 +138,16 @@ function Flower({ spot, show, onPick, reduced }) {
   const petal = useMemo(() => gummy(spot.color, { roughness: 0.4 }), [spot.color])
   const core = useMemo(() => gummy('#ffcf33', { roughness: 0.4 }), [])
   useFrame((s, dt) => {
+    dt = Math.min(dt, 0.025)
     cur.current = damp(cur.current, show ? 1 : 0, 4, dt)
     g.current.scale.setScalar(Math.max(0.0001, cur.current) * spot.s)
     g.current.visible = cur.current > 0.01
     const w = wob.current
+    if (reduced) { w.a = 0; w.v = 0 }
     w.v += (-60 * w.a - 4 * w.v) * dt
     w.a += w.v * dt
     g.current.rotation.z = w.a + (reduced ? 0 : Math.sin(s.clock.elapsedTime * 1.4 + spot.x) * 0.05)
-    head.current.rotation.y += dt * 0.4
+    if (!reduced) head.current.rotation.y += dt * 0.4
   })
   return (
     <group position={[spot.x, 0, spot.z]}>
@@ -181,6 +183,8 @@ function Mushroom({ spot, habit, done, quizResult, today, petPos, reduced, selec
   const stem = useMemo(() => gummy('#f6ecd6', { roughness: 0.55 }), [])
   const dot = useMemo(() => gummy('#fff8ec', { roughness: 0.5 }), [])
   useFrame((_, dt) => {
+    dt = Math.min(dt, 0.025)
+    if (reduced) { sp.current.y = 0; sp.current.v = 0 }
     const distance = Math.hypot(petPos.x - spot.x, petPos.z - spot.z)
     const nextNear = near ? distance < 1.8 : distance < 1.3
     if (nextNear !== near) setNear(nextNear)

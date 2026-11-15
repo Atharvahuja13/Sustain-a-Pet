@@ -250,5 +250,47 @@ button, label { transition: transform 0.18s cubic-bezier(.3,1.5,.5,1), box-shado
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .float, .toast, .mushroom-prompt, .why, .evolve, .evolve-text, .rays { animation: none; }
+  .vfill, .pet-stage, button, label, .habits .box { transition: none; }
 }
+
+/* Garden journal keeps every game action available without a 3D pointer. */
+.garden-toolbar { position: absolute; z-index: 8; left: 12px; right: 12px; bottom: 116px; display: flex; align-items: center; gap: 7px; padding: 8px; border-radius: 20px; color: #f5ffe9; background: #102b20ed; border: 1px solid #ffffff40; }
+.garden-toolbar button { min-height: 44px; background: #ffffff18; border: 1px solid #ffffff35; border-radius: 12px; padding: 7px; font-size: .72rem; }
+.garden-toolbar button:first-child { flex: 1; text-align: left; }
+.garden-toolbar small, .garden-toolbar span strong { display: block; margin-top: 3px; }
+.garden-toolbar small { font-size: .57rem; }
+.garden-toolbar > span { font-size: .63rem; }
+.home .world-guide { bottom: 195px; }
+.home .drawer { bottom: 190px; }
+.home h1 { overflow-wrap: anywhere; font-size: clamp(1.4rem, 6vw, 2.3rem); }
+.home .top-r { flex-shrink: 0; }
+.home .toasts { top: 150px; padding: 0 12px; text-align: center; font-size: .8rem; }
+.journal { width: min(94vw, 470px); max-height: min(86svh, 820px); padding: 20px; border: 1px solid #fff; border-radius: 26px; background: #f1f5e9; color: #153c28; box-shadow: 0 20px 80px #0009; overflow-y: auto; }
+.journal::backdrop { background: #041b12a8; backdrop-filter: blur(6px); }
+.journal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.journal-head small { font-size: .6rem; letter-spacing: .15em; }
+.journal-head h2 { margin: 7px 0 12px; font-size: 1.5rem; }
+.journal button { min-height: 44px; padding: 8px 12px; border: 1px solid #a8bca9; border-radius: 12px; background: #e1edcf; font-weight: 650; font-size: .8rem; }
+.journal button:disabled { opacity: .6; cursor: default; }
+.journal button[aria-pressed=true] { background: #245d3c; color: #fff; }
+.journal-wallet { display: flex; justify-content: space-between; gap: 8px; font-size: .75rem; padding: 12px 0; }
+.journal-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; position: sticky; top: -20px; padding: 10px 0; background: #f1f5e9; z-index: 2; }
+.journal-tabs button { padding: 8px 4px; }
+.journal-status { min-height: 1em; font-size: .8rem; color: #235d36; }
+.journal-card { margin: 12px 0; padding: 16px; background: #fffaf0; border: 1px solid #d4ddc5; border-radius: 18px; }
+.journal-card.selected { border-color: #4c8a50; box-shadow: inset 3px 0 #4c8a50; }
+.journal h3 { font-size: 1rem; margin: 6px 0 10px; }
+.journal p { line-height: 1.5; }
+.journal-card p, .journal-note { font-size: .8rem; color: #4b6652; }
+.journal-card > small { font-size: .6rem; letter-spacing: .12em; }
+.journal-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #cedcc6; font-size: .85rem; }
+.journal-row small { display: block; font-size: .7rem; margin-top: 5px; }
+.journal-row button { flex-shrink: 0; }
+.placement-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.decor-layout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px; background: #dce9cf; border-radius: 18px; }
+.decor-layout > div { display: grid; text-align: center; gap: 6px; font-size: .65rem; }
+.decor-layout span { font-size: 2rem; }
+.journal .habits .txt { font-size: .8rem; }
+.practice-start { display: block; position: relative; margin: -14px auto 20px; z-index: 2; min-height: 44px; color: #fff; background: #1b4d32; border: 1px solid #afcca5; border-radius: 12px; padding: 10px 16px; }
+@media (max-width: 699px), (max-height: 519px) { .garden-toolbar { bottom: max(105px, calc(env(safe-area-inset-bottom) + 95px)); } .home .world-guide { bottom: 180px; } .home .toasts { top: 110px; } }

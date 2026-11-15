@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
@@ -88,6 +89,12 @@ export const radialTexture = (stops, size = 128) => canvasTexture(size, (ctx, n)
   ctx.fillRect(0, 0, n, n)
 })
 
+const motionQuery = () => typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : null
+const subscribeMotion = (notify) => {
+  const query = motionQuery()
+  query?.addEventListener('change', notify)
+  return () => query?.removeEventListener('change', notify)
+}
 export function usePrefersReducedMotion() {
-  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  return useSyncExternalStore(subscribeMotion, () => motionQuery()?.matches ?? false, () => false)
 }

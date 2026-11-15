@@ -48,6 +48,7 @@ export default function Burst({ kind, burstKey, origin = [0, 1.2, 0.3], reduced 
 
   useFrame((_, dt) => {
     const st = sim.current
+    if (reduced) { st.t = -1; mesh.current.count = 0; return }
     if (st.t < 0) return
     dt = Math.min(dt, 0.05)
     st.t += dt
