@@ -294,3 +294,11 @@ button, label { transition: transform 0.18s cubic-bezier(.3,1.5,.5,1), box-shado
 .journal .habits .txt { font-size: .8rem; }
 .practice-start { display: block; position: relative; margin: -14px auto 20px; z-index: 2; min-height: 44px; color: #fff; background: #1b4d32; border: 1px solid #afcca5; border-radius: 12px; padding: 10px 16px; }
 @media (max-width: 699px), (max-height: 519px) { .garden-toolbar { bottom: max(105px, calc(env(safe-area-inset-bottom) + 95px)); } .home .world-guide { bottom: 180px; } .home .toasts { top: 110px; } }
+
+.camera-tools { position: absolute; right: 12px; top: 50%; z-index: 4; display: grid; gap: 5px; }
+.camera-tools button { min-width: 36px; min-height: 36px; border-radius: 12px; border: 1px solid #ffffff55; color: #fff; background: #153f29c9; font-size: 1.2rem; }
+.scene-fallback { position: absolute; inset: 28% 15% auto; text-align: center; padding: 15px; border-radius: 20px; background: #ebf2df; color: #25472e; font-size: .85rem; }
+.scene-fallback button { padding: 10px; border-radius: 12px; border: 1px solid #a0b498; background: #d1e5bd; }
+.onboard .practice-start { margin: 3px auto 0; }
+.home:has(.drawer) .world-guide { display: none; }
+.home:has(.drawer) .camera-tools { top: 35%; }

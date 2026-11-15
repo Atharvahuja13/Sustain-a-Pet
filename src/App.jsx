@@ -10,6 +10,7 @@ import DemoDrawer from './components/DemoDrawer.jsx'
 import Onboarding from './components/Onboarding.jsx'
 import Rewards, { unlockText } from './components/Rewards.jsx'
 import { usePrefersReducedMotion } from './components/pet3d/shared.js'
+import SceneBoundary from './components/SceneBoundary.jsx'
 import GardenJournal from './components/GardenJournal.jsx'
 import { AREAS } from './progression.js'
 import LeafFootsteps from './components/LeafFootsteps.jsx'
@@ -134,7 +135,7 @@ export default function App() {
 
   petTapRef.current = petTap
 
-  if (!app.real && !app.inDemo) return <><Onboarding reduced={reduced} onHatch={(name, sprite) => { dispatch({ type: 'hatch', name, sprite }); safeTutorial('in-progress'); setTutorial('in-progress') }} /><button className="practice-start" onClick={() => dispatch({ type: 'enterDemo' })}>Try a separate practice garden</button></>
+  if (!app.real && !app.inDemo) return <Onboarding reduced={reduced} onPractice={() => dispatch({ type: 'enterDemo' })} onHatch={(name, sprite) => { dispatch({ type: 'hatch', name, sprite }); safeTutorial('in-progress'); setTutorial('in-progress') }} />
   if (!pet) return null
 
   const mood = moodFor(pet.health)
@@ -150,7 +151,7 @@ export default function App() {
           <p className="eyebrow"><Icon name="leaf" size={16} />Sustain-a-Pet</p>
           <div className="name-row">
             <h1>{pet.pet.name}</h1>
-            {app.inDemo && <span className="pill demo">Demo</span>}
+            {app.inDemo && <span className="pill demo">Practice</span>}
           </div>
         </div>
         <div className="top-r">
@@ -170,18 +171,19 @@ export default function App() {
       )}
 
       <section className={`pet-stage mood-${mood.toLowerCase()}`} aria-label={`${pet.pet.name}'s world`}>
-        <Suspense fallback={<div className="loading">Waking up {pet.pet.name}…</div>}>
+        <SceneBoundary><Suspense fallback={<div className="loading">Waking up {pet.pet.name}…</div>}>
           <PetCanvas orbit api={camApi} follow={{ get current() { return petCtl.current.pos } }} stage={stage} camera={{ position: [0, 7.7, 8.4], fov: 48 }} target={[0, 0.7, 0]}>
             <World ctl={petCtl} garden={garden} reduced={reduced} habits={habitList} done={done} today={today} quizResult={pet.days[today]?.quiz}
               onHabit={(id) => dispatch({ type: 'tick', id })} onQuizAnswer={(choice, correct) => dispatch({ type: 'quiz', choice, correct })}
               onFlower={() => { bump('leaves'); powerUp(3.5) }} onShroom={() => bump('bounce')} />
             <PetModel sprite={pet.pet.sprite} key={pet.activePet} stage={stage} mood={mood} fx={fx} reduced={reduced} ctl={petCtl} onPat={petTap} />
           </PetCanvas>
-        </Suspense>
+        </Suspense></SceneBoundary>
         <div className="world-guide" aria-live="polite">
           <span className="world-guide-icon" aria-hidden="true">✧</span>
           <span><strong>Garden quests <em>{tasks}/{habitList.length}</em></strong><small>{tasks === habitList.length ? 'Wonderful work. Your garden is thriving.' : 'Tap a mushroom, then complete its quest.'}</small></span>
         </div>
+        <div className="camera-tools" aria-label="Garden camera"><button aria-label="Rotate garden left" onClick={() => camApi.current.rotate?.(-0.5)}>↶</button><button aria-label="Reset garden camera" onClick={() => camApi.current.reset?.()}>⌂</button><button aria-label="Zoom in" onClick={() => camApi.current.zoom?.(0.8)}>+</button><button aria-label="Zoom out" onClick={() => camApi.current.zoom?.(1.25)}>−</button></div>
         <LeafFootsteps movement={petCtl} enabled={!reduced} />
         {tutorial === 'in-progress' && <QuickGuide onFinish={finishTutorial} />}
         <Rewards floats={floats} toasts={toasts} evolve={evolve} onCloseEvolve={() => setEvolve(null)} petName={pet.pet.name} />
