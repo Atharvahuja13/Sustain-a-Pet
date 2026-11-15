@@ -1,8 +1,10 @@
 // App state: useReducer over engine.js, persisted to localStorage (in-memory fallback).
 import { useEffect, useReducer } from 'react'
 import {
-  addDays, addXp, allHabitsDone, answerQuiz, createState, dateKey, daysBetween, logHabit, moodFor, rollover, stageIndex,
+  addDays, addXp, allHabitsDone, answerQuiz, createState, dateKey, daysBetween, logHabit, migrateState, moodFor, rollover, stageIndex,
 } from './engine.js'
+
+import { claimGift, claimQuest, buyDecor, placeDecor, restore, visitArea, selectPet } from './progression.js'
 
 const REAL_KEY = 'sustain-a-pet'
 const DEMO_KEY = 'sustain-a-pet-demo'
@@ -44,8 +46,8 @@ function load() {
   const real = storage.get(REAL_KEY)
   const demoSave = storage.get(DEMO_KEY)
   const app = {
-    real: real?.version === 1 ? real : null,
-    demo: demoSave?.state ?? null,
+    real: migrateState(real),
+    demo: migrateState(demoSave?.state),
     offset: demoSave?.offset ?? 0,
     inDemo: false,
     events: [],
@@ -66,7 +68,7 @@ function diffEvents(before, after, today) {
   if (after.days[today]?.quiz && !before.days[today]?.quiz) {
     ev.push({ type: after.days[today].quiz === 'correct' ? 'quizCorrect' : 'quizWrong' })
   }
-  if (stageIndex(after.xp) > stageIndex(before.xp)) ev.push({ type: 'stageUp', stage: stageIndex(after.xp) })
+  if (before.activePet === after.activePet && stageIndex(after.xp) > stageIndex(before.xp)) ev.push({ type: 'stageUp', stage: stageIndex(after.xp) })
   for (const id of after.unlocked) if (!before.unlocked.includes(id)) ev.push({ type: 'unlock', id })
   if (moodFor(after.health) !== moodFor(before.health)) ev.push({ type: 'mood', mood: moodFor(after.health), from: moodFor(before.health) })
   if (allHabitsDone(after, today) && !allHabitsDone(before, today)) ev.push({ type: 'allDone' })
@@ -76,7 +78,8 @@ function diffEvents(before, after, today) {
 function withPet(app, update) {
   const today = todayOf(app)
   const before = activeOf(app)
-  const after = update(before, today)
+  if (!before) return app
+  const after = update(rollover(before, today), today)
   if (after === before) return app
   const next = app.inDemo ? { ...app, demo: after } : { ...app, real: after }
   return { ...next, events: diffEvents(before, after, today), nonce: app.nonce + 1 }
@@ -87,7 +90,8 @@ export function reduce(app, action) {
     case 'open': {
       // On open/focus: apply decay for days away; remember how long for the welcome-back line.
       if (!app.real) return app
-      const today = todayOf(app)
+      if (app.inDemo) return withPet(app, (s, t) => rollover(s, t))
+      const today = realToday()
       const away = daysBetween(app.real.lastOpenDate, today)
       const real = rollover(app.real, today)
       if (real === app.real) return app
@@ -97,6 +101,13 @@ export function reduce(app, action) {
       const real = createState(action.name.trim().slice(0, 20), todayOf({ ...app, inDemo: false }), action.sprite)
       return { ...app, real, awayDays: 0, events: [], nonce: app.nonce + 1 }
     }
+    case 'gift': return withPet(app, claimGift)
+    case 'quest': return withPet(app, (s, t) => claimQuest(s, action.id, t))
+    case 'buy': return withPet(app, (s) => buyDecor(s, action.id))
+    case 'place': return withPet(app, (s) => placeDecor(s, action.id, action.slot))
+    case 'restore': return withPet(app, (s) => restore(s, action.id))
+    case 'area': return withPet(app, (s) => visitArea(s, action.id))
+    case 'pet': return withPet(app, (s, t) => selectPet(s, action.id, t))
     case 'tick':
       return withPet(app, (s, t) => logHabit(s, action.id, t))
     case 'quiz':

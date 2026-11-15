@@ -52,7 +52,18 @@ export function addDays(date, n) {
 
 export function createState(name, today, sprite = 'leafling') {
   return {
-    version: 1,
+    version: 2,
+    coins: 0,
+    activePet: sprite,
+    pets: {},
+    gifts: [],
+    streak: 0,
+    questClaims: [],
+    owned: [],
+    placements: {},
+    restored: [],
+    areas: ['meadow'],
+    area: 'meadow',
     pet: { name, sprite, createdOn: today },
     xp: 0,
     health: START_HEALTH,
@@ -74,6 +85,7 @@ function award(state, today, habitId, xp, health, dayPatch = {}) {
   const next = {
     ...state,
     xp: state.xp + xp,
+    coins: (state.coins ?? 0) + xp,
     health: Math.min(100, state.health + health),
     days: { ...state.days, [today]: { ...day, ...dayPatch, habits: [...day.habits, habitId], xp: day.xp + xp } },
     counts: { ...state.counts, [habitId]: (state.counts[habitId] ?? 0) + 1 },
@@ -118,4 +130,13 @@ export function addXp(state, amount) {
 
 /** Which of today's habits are done, for the checklist. */
 export const habitsDone = (state, today) => dayOf(state, today).habits
-export const allHabitsDone = (state, today) => habitsDone(state, today).length >= habits.length
+export const taskCount = (state, today) => habitsDone(state, today).filter((id) => id !== 'quiz').length + (dayOf(state, today).quiz ? 1 : 0)
+export const allHabitsDone = (state, today) => taskCount(state, today) >= habits.length
+
+
+/** Preserve version-one progress while introducing shared garden resources. */
+export function migrateState(saved) {
+  if (!saved || ![1, 2].includes(saved.version) || !saved.pet || !saved.days || !saved.counts || !Number.isFinite(saved.xp) || !Number.isFinite(saved.health)) return null
+  const base = createState(saved.pet.name, saved.lastOpenDate, saved.pet.sprite)
+  return { ...base, ...saved, version: 2, activePet: saved.activePet ?? saved.pet.sprite }
+}
